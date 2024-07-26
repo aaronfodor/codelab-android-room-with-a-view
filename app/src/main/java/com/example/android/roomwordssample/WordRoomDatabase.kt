@@ -29,10 +29,28 @@ import kotlinx.coroutines.launch
  * This is the backend. The database. This used to be done by the OpenHelper.
  * The fact that this has very few comments emphasizes its coolness.
  */
-@Database(entities = [Word::class], version = 1)
+@Database(entities = [Word::class], version = 1, exportSchema = false)
 abstract class WordRoomDatabase : RoomDatabase() {
 
     abstract fun wordDao(): WordDao
+
+    private class WordDatabaseCallback(
+        private val scope: CoroutineScope
+    ) : RoomDatabase.Callback() {
+        /**
+         * Override the onCreate method to populate the database.
+         */
+        override fun onCreate(db: SupportSQLiteDatabase) {
+            super.onCreate(db)
+            // If you want to keep the data through app restarts,
+            // comment out the following line.
+            INSTANCE?.let { database ->
+                scope.launch(Dispatchers.IO) {
+                    populateDatabase(database.wordDao())
+                }
+            }
+        }
+    }
 
     companion object {
         @Volatile
@@ -58,24 +76,6 @@ abstract class WordRoomDatabase : RoomDatabase() {
                 INSTANCE = instance
                 // return instance
                 instance
-            }
-        }
-
-        private class WordDatabaseCallback(
-            private val scope: CoroutineScope
-        ) : RoomDatabase.Callback() {
-            /**
-             * Override the onCreate method to populate the database.
-             */
-            override fun onCreate(db: SupportSQLiteDatabase) {
-                super.onCreate(db)
-                // If you want to keep the data through app restarts,
-                // comment out the following line.
-                INSTANCE?.let { database ->
-                    scope.launch(Dispatchers.IO) {
-                        populateDatabase(database.wordDao())
-                    }
-                }
             }
         }
 
